@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using DBAtsiskaitymas.Contexts;
@@ -11,6 +12,7 @@ using DBAtsiskaitymas.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.VisualBasic;
 
 namespace DBAtsiskaitymas
 {
@@ -22,40 +24,44 @@ namespace DBAtsiskaitymas
             while (isActive)
             {
                 Console.WriteLine("\n== WELCOME TO STUDENT INFORMATION SYSTEM ==");
-                Console.WriteLine("= [1]  - CREAT NEW STUDENT =");
-                Console.WriteLine("= [2]  - ADD NEW DEPARTMENT =");
-                Console.WriteLine("= [3]  - ADD NEW LECTURE =");
-                Console.WriteLine("= [4]  - CHANGE STUDENT DEPARTMENT WITH LECTURES =");
-                Console.WriteLine("= [5]  - LIST DEPARTMENTS STUDENTS =");
-                Console.WriteLine("= [6]  - LIST DEPARTMENTS LECTURES =");
-                Console.WriteLine("= [7]  - LIST STUDENTS LECTURES =");
-                Console.WriteLine("= [8]  - DELETE STUDENT =");
+                Console.WriteLine("= [1]  - CREAT NEW STUDENT WITH DEPARTMENT =");
+                Console.WriteLine("= [2]  - CREAT NEW STUDENT WITH DEPARTMENT AND LECTURES =");
+                Console.WriteLine("= [3]  - ADD NEW DEPARTMENT =");
+                Console.WriteLine("= [4]  - ADD NEW LECTURE =");
+                Console.WriteLine("= [5]  - CHANGE STUDENT DEPARTMENT WITH LECTURES =");
+                Console.WriteLine("= [6]  - LIST DEPARTMENTS STUDENTS =");
+                Console.WriteLine("= [7]  - LIST DEPARTMENTS LECTURES =");
+                Console.WriteLine("= [8]  - LIST STUDENTS LECTURES =");
+                Console.WriteLine("= [9]  - DELETE STUDENT =");
                 Console.WriteLine("= [12] - EXIT PROGRAME =\n");
                 var input = Input();
                 switch (input)
                 {
                     case 1:
-                        AddNewStudent();
+                        AddNewStudentToDepartment();
                         break;
                     case 2:
-                        AddNewDepartment();
+                        AddNewStudent();
                         break;
                     case 3:
-                        AddNewLecture();
+                        AddNewDepartment();
                         break;
                     case 4:
-                        ChangeStudentDepartment();
+                        AddNewLecture();
                         break;
                     case 5:
-                        ShowDepartmentsStudents();
+                        ChangeStudentDepartment();
                         break;
                     case 6:
-                        ShowDepartmentsLectures();
+                        ShowDepartmentsStudents();
                         break;
                     case 7:
-                        ShowStudentsLectures();
+                        ShowDepartmentsLectures();
                         break;
                     case 8:
+                        ShowStudentsLectures();
+                        break;
+                    case 9:
                         DeleteStudent();
                         break;
                     case 12:
@@ -69,56 +75,55 @@ namespace DBAtsiskaitymas
         // === FUNCTIONS ===============================================================================================
 
         // === HANDLING STUDENTS FUNC ===============================================================================================
-        // 4. Sukurti studentą, jį pridėti prie egzistuojančio departamento ir priskirti jam egzistuojančias paskaitas. DONE ==
+
+        // 2. Pridėti studentus/paskaitas į jau egzistuojantį departamentą. ==
+        public void AddNewStudentToDepartment()
+        {
+            using var dbContext = new AplicationContext();
+
+            Console.WriteLine("Enter new student name:");
+            string studentName = Console.ReadLine();
+            Console.WriteLine("Enter new student surname:");
+            string studentSurname = Console.ReadLine();
+            Console.WriteLine();
+
+            // Listing all available Departments and adding Department ID to list
+            Console.WriteLine("Select which department student will attend (by typing its number):");
+            var listOfDepartmentsIds = new List<string>();
+            ListingAndAddingToList(listOfDepartmentsIds, "Departments");
+
+            // Selecting departmentId
+            string departmentId = SelectingId(listOfDepartmentsIds);
+
+            var department = dbContext.Departments.Single(x => x.Id == new Guid(departmentId));
+            
+            // Creating Student in DB
+            dbContext.Students.Add(new Student { Name = studentName, Surname = studentSurname, Departments = new List<Department> { department } });
+
+            dbContext.SaveChanges();
+
+            Console.WriteLine($"\nStudent {studentName} {studentSurname} is created and added to {department.Name} department!");
+        }
+
+        // 4. Sukurti studentą, jį pridėti prie egzistuojančio departamento ir priskirti jam egzistuojančias paskaitas. ==
         public void AddNewStudent()
         {
             using var dbContext = new AplicationContext();
 
             Console.WriteLine("Enter new student name:");
             string studentName = Console.ReadLine();
-
             Console.WriteLine("Enter new student surname:");
             string studentSurname = Console.ReadLine();
 
+            // Listing all available Departments and adding Department ID to list
             Console.WriteLine("Select which department student will attend (by typing its number):");
-            // Listing all available Departments
-            var listOfDepartments = new List<string>();
-            foreach (var (item, index) in dbContext.Departments.WithIndex())
-            {
-                Console.WriteLine($"{index+1}. {item.Name}");
-                listOfDepartments.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
-            // Adding selected Department 
-            string departmentId = "";
-            var input = Input();
-            for (int i = 0; i < listOfDepartments.Count; i++)
-            {
-                if(input == i + 1)
-                {
-                    departmentId = listOfDepartments[i];
-                }
-            }
+            var listOfDepartmentsIds = new List<string>();
+            ListingAndAddingToList(listOfDepartmentsIds, "Departments");
 
-            //Some code which lets to chose Lectures for the student
-                // Listing all Lectures which are related to Department
-                    //Console.WriteLine("\nSelect which Lectures Student will attend in Department by selecting a numbers seperating them by ','.");
+            // Selecting departmentId
+            string departmentId = SelectingId(listOfDepartmentsIds);
+
             var listOfLecturesInDepartment = dbContext.Departments.Include(x => x.Lectures).Where(i => i.Id == new Guid(departmentId)).ToList();
-                    //for (int i = 0; i < listOfLecturesInDepartment.Count; i++)
-                    //{
-                    //    for (int x = 0; x < listOfLecturesInDepartment[i].Lectures.Count; x++)
-                    //    {
-                    //        Console.WriteLine($"{x+1}. {listOfLecturesInDepartment[i].Lectures[x].Name}");
-
-                    //    }
-                    //}
-            Console.WriteLine();
-
-            // Adding Lectures which coresponds to selected Department to student
-                //Some code which lets to chose Lectures for the student
-                    //var lectureSelection = Console.ReadLine();
-                    //string[] selectedLectures = lectureSelection.Split(',');
-
             var studentLectureList = new List<Lecture>();
 
             for (int i = 0; i < listOfLecturesInDepartment.Count; i++)
@@ -127,26 +132,17 @@ namespace DBAtsiskaitymas
                 {
                     studentLectureList.Add(dbContext.Lectures.Single(v => v.Id == item.Id));
                 }
-                    //Some code which lets to chose Lectures for the student  
-                        //for (int x = 0; x < listOfLecturesInDepartment[i].Lectures.Count; x++)
-                        //{
-                        //    foreach (var item in selectedLectures)
-                        //    {
-                        //        if (Int32.Parse(item) - 1 == x)
-                        //        {
-                        //            studentLectureList.Add(dbContext.Lectures.Single(v => v.Id == listOfLecturesInDepartment[i].Lectures[x].Id));
-                        //        }
-                        //    }
-                        //}
             }
 
-            // Creating Student in DB
             var department = dbContext.Departments.Single(x => x.Id == new Guid(departmentId));
+            
+            // Creating Student in DB
             dbContext.Students.Add(new Student { Name = studentName, Surname = studentSurname, Departments = new List<Department> { department }, Lectures = new List<Lecture>(studentLectureList) });
 
             dbContext.SaveChanges();
 
-            Console.WriteLine($"\nStudent {studentName} {studentSurname} is added!");
+            Console.WriteLine($"\nStudent {studentName} {studentSurname} is created and added to {department.Name} department! Studens Lectures are:");
+            ListingAndAddingToList(listOfDepartmentsIds, "Lectures");
         }
 
         // ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -156,27 +152,14 @@ namespace DBAtsiskaitymas
         {
             using var dbContext = new AplicationContext();
 
-            Console.WriteLine("Select Student which lectures you want to see:\n");
             // Listing all available students
+            Console.WriteLine("Select Student which lectures you want to see (by typing its number):\n");
             var listOfStudents = new List<string>();
-            foreach (var (item, index) in dbContext.Students.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name} {item.Surname}");
-                listOfStudents.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
+            ListingAndAddingToList(listOfStudents, "Students");
 
-            Console.WriteLine("\nSelect Student Number:");
             // Adding selected Department 
-            string studenttId = "";
-            var input = Input();
-            for (int i = 0; i < listOfStudents.Count; i++)
-            {
-                if (input == i + 1)
-                {
-                    studenttId = listOfStudents[i];
-                }
-            }
+            Console.WriteLine("\nSelect Student Number:");
+            string studenttId = SelectingId(listOfStudents);
 
             // Finding lectures which relates to the Student
             var listOfLectures = dbContext.Students.Include(x => x.Lectures).Where(i => i.Id == new Guid(studenttId)).ToList();
@@ -200,27 +183,14 @@ namespace DBAtsiskaitymas
         {
             using var dbContext = new AplicationContext();
 
-            Console.WriteLine("Select which Student will change Department:\n");
             // Listing all available students
+            Console.WriteLine("Select which Student will change Department:\n");
             var listOfStudents = new List<string>();
-            foreach (var (item, index) in dbContext.Students.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name} {item.Surname}");
-                listOfStudents.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
+            ListingAndAddingToList(listOfStudents, "Students");
 
+            // Adding selected Student 
             Console.WriteLine("Select Student Number:");
-            // Adding selected Department 
-            string studenttId = "";
-            var input = Input();
-            for (int i = 0; i < listOfStudents.Count; i++)
-            {
-                if (input == i + 1)
-                {
-                    studenttId = listOfStudents[i];
-                }
-            }
+            string studenttId = SelectingId(listOfStudents);
             Console.WriteLine();
 
             // Selecting Departments
@@ -237,29 +207,12 @@ namespace DBAtsiskaitymas
             Console.WriteLine("Select New department from the list:");
             // Listing new Departments for the student and adding to list
             var listOfDepartments = new List<string>();
-            int count = 0;
-            foreach (var item in dbContext.Departments)
-            {
-                if (item.Name != currentDepartment)
-                {
-                    count++;
-                    Console.WriteLine($"{count}. {item.Name}");
-                    listOfDepartments.Add(item.Id.ToString());
-                } 
-            }
-            Console.WriteLine();
+            ListingAndAddingToList(listOfDepartments, "Departments");
 
             // Adding selected Department
-            string newDepartmentId = "";
-            var departmentInput = Input();
-            for (int i = 0; i < listOfDepartments.Count; i++)
-            {
-                if (departmentInput == i + 1)
-                {
-                    newDepartmentId = listOfDepartments[i];
-                }
-            }
-            
+            string newDepartmentId = SelectingId(listOfDepartments);
+            Console.WriteLine();
+
             // Adding new Lectures to the student and listing them
             Console.WriteLine("New Lecture list:");
             var newLecturesList = dbContext.Departments.Include(x => x.Lectures).Where(i => i.Id == new Guid(newDepartmentId)).ToList();
@@ -300,27 +253,14 @@ namespace DBAtsiskaitymas
         {
             using var dbContext = new AplicationContext();
 
-            Console.WriteLine("Select which Student to Delete:\n");
             // Listing all available students
+            Console.WriteLine("Select which Student to Delete:\n");
             var listOfStudents = new List<string>();
-            foreach (var (item, index) in dbContext.Students.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name} {item.Surname}");
-                listOfStudents.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
+            ListingAndAddingToList(listOfStudents, "Students");
 
-            Console.WriteLine("\nSelect Student Number:");
             // Adding selected Department 
-            string studenttId = "";
-            var input = Input();
-            for (int i = 0; i < listOfStudents.Count; i++)
-            {
-                if (input == i + 1)
-                {
-                    studenttId = listOfStudents[i];
-                }
-            }
+            Console.WriteLine("\nSelect Student Number:");
+            string studenttId = SelectingId(listOfStudents);
             Console.WriteLine();
 
             // Deleting student
@@ -343,11 +283,7 @@ namespace DBAtsiskaitymas
             Console.WriteLine("Select by typing lecture number and seperating by ',' - LIKE: 1,2,etc.. .\n");
 
             // Listing all the Lectures in DB
-            foreach (var (item, index) in dbContext.Lectures.WithIndex())
-            {
-                Console.WriteLine($"{index+1}. {item.Name}");
-            }
-            Console.WriteLine();
+            ListingEntries("Lectures");
 
             // Adding selected Lectures to list
             var lectureList = new List<Lecture>();
@@ -380,26 +316,14 @@ namespace DBAtsiskaitymas
         {
             using var dbContext = new AplicationContext();
 
-            Console.WriteLine("Select Departments which students you want to see:\n");
             // Listing all available Departments
+            Console.WriteLine("Select Departments which students you want to see:\n");
             var listOfDepartments = new List<string>();
-            foreach (var (item, index) in dbContext.Departments.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name}");
-                listOfDepartments.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
-            Console.WriteLine("Select Deparment Number:");
+            ListingAndAddingToList(listOfDepartments, "Departments");
+
             // Adding selected Department 
-            string departmentId = "";
-            var input = Input();
-            for (int i = 0; i < listOfDepartments.Count; i++)
-            {
-                if (input == i + 1)
-                {
-                    departmentId = listOfDepartments[i];
-                }
-            }
+            Console.WriteLine("Select Deparment Number:");
+            string departmentId = SelectingId(listOfDepartments);
 
             // Finding students which relates to the Department
             var listOfStudentsInDepartment = dbContext.Departments.Include(x => x.Students).Where(i => i.Id == new Guid(departmentId)).ToList();
@@ -425,23 +349,11 @@ namespace DBAtsiskaitymas
             Console.WriteLine("Select Departments which Lectures you want to see:\n");
             // Listing all available Departments
             var listOfDepartments = new List<string>();
-            foreach (var (item, index) in dbContext.Departments.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name}");
-                listOfDepartments.Add(item.Id.ToString());
-            }
-            Console.WriteLine();
+            ListingAndAddingToList(listOfDepartments, "Departments");
+
             Console.WriteLine("Select Deparment Number:");
             // Adding selected Department 
-            string departmentId = "";
-            var input = Input();
-            for (int i = 0; i < listOfDepartments.Count; i++)
-            {
-                if (input == i + 1)
-                {
-                    departmentId = listOfDepartments[i];
-                }
-            }
+            string departmentId = SelectingId(listOfDepartments);
 
             // Finding lectures which relates to the Department
             var listOfLecturesInDepartment = dbContext.Departments.Include(x => x.Lectures).Where(i => i.Id == new Guid(departmentId)).ToList();
@@ -471,11 +383,7 @@ namespace DBAtsiskaitymas
             Console.WriteLine("Select by typing department number and seperating by ',' - LIKE: 1,2,etc.. .\n");
 
             // Listing all the Departments in DB
-            foreach (var (item, index) in dbContext.Departments.WithIndex())
-            {
-                Console.WriteLine($"{index + 1}. {item.Name}");
-            }
-            Console.WriteLine();
+            ListingEntries("Departments");
 
             // Adding selected Departments to list
             var departmentList = new List<Department>();
@@ -503,6 +411,91 @@ namespace DBAtsiskaitymas
         }
 
         // === SUPPORT FUNC ===============================================================================================
+
+        // = Handling Listing all available entries and adding IDs to list =
+        public void ListingAndAddingToList (List<string> listOfAllIds, string dbName)
+        {
+            using var dbContext = new AplicationContext();
+
+            if (dbName == "Departments")
+            {
+                    foreach (var (item, index) in dbContext.Departments.WithIndex())
+                    {
+                        Console.WriteLine($"{index + 1}. {item.Name}");
+                        listOfAllIds.Add(item.Id.ToString());
+                    }
+                Console.WriteLine();
+            }
+            else if (dbName == "Students")
+            {
+                foreach (var (item, index) in dbContext.Students.WithIndex())
+                {
+                    Console.WriteLine($"{index + 1}. {item.Name} {item.Surname}");
+                    listOfAllIds.Add(item.Id.ToString());
+                }
+                Console.WriteLine();
+            }
+            else if(dbName == "Lectures")
+            {
+                foreach (var (item, index) in dbContext.Lectures.WithIndex())
+                {
+                    Console.WriteLine($"{index + 1}. {item.Name}");
+                    listOfAllIds.Add(item.Id.ToString());
+                }
+                Console.WriteLine();
+            }
+
+        }
+
+        // = Handling Listing all available entries =
+        public void ListingEntries(string dbName)
+        {
+            using var dbContext = new AplicationContext();
+
+            if (dbName == "Departments")
+            {
+                foreach (var (item, index) in dbContext.Departments.WithIndex())
+                {
+                    Console.WriteLine($"{index + 1}. {item.Name}");
+                }
+                Console.WriteLine();
+            }
+            else if (dbName == "Students")
+            {
+                foreach (var (item, index) in dbContext.Students.WithIndex())
+                {
+                    Console.WriteLine($"{index + 1}. {item.Name} {item.Surname}");
+                }
+                Console.WriteLine();
+            }
+            else if (dbName == "Lectures")
+            {
+                foreach (var (item, index) in dbContext.Lectures.WithIndex())
+                {
+                    Console.WriteLine($"{index + 1}. {item.Name}");
+                }
+                Console.WriteLine();
+            }
+        }
+
+        // = Handling Adding selected Departments ID =
+        public static string SelectingId(List<string> listOfIds)
+        {
+            using var dbContext = new AplicationContext();
+
+            string selectedId = "";
+            var input = Input();
+            for (int i = 0; i < listOfIds.Count; i++)
+            {
+                if (input == i + 1)
+                {
+                    selectedId = listOfIds[i];
+                }
+            }
+
+            return selectedId;
+        }
+
         // = Handling input =
         public static int Input()
         {
